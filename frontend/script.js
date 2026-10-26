@@ -142,6 +142,11 @@ const DOMAIN_OPTIONS = ["AI/ML", "Web Development", "FinTech", "Healthcare", "Op
 
 const API_BASE_URL = "http://localhost:8080/api";
 const DEMO_STUDENT_ID = 1; // Seeded by database/schema.sql for bookmark demonstrations.
+const DEMO_ACCOUNT = Object.freeze({
+  name: "Prithvi Singh Kshatriya",
+  email: "demo@hackmatch.com",
+  password: "Hack123"
+});
 let usingBackendHackathons = false;
 let usingBackendBookmarks = false;
 let recommendationSource = "none";
@@ -198,13 +203,10 @@ async function loadBackendBookmarks() {
 
 // Demo authentication intentionally remains frontend-only. The Java API has no auth endpoints.
 async function loginUser(credentials) {
-  // DEMO MODE: no real check. Uses the part before "@" as the display name.
-  return { name: credentials.email.split("@")[0], email: credentials.email };
-}
-
-async function registerUser(details) {
-  // DEMO MODE: returns the profile without the password.
-  return { name: details.name, email: details.email, college: details.college, branch: details.branch, year: details.year };
+  if (credentials.email !== DEMO_ACCOUNT.email || credentials.password !== DEMO_ACCOUNT.password) {
+    throw new Error("That email or password does not match the presentation demo account.");
+  }
+  return { name: DEMO_ACCOUNT.name, email: DEMO_ACCOUNT.email };
 }
 
 
@@ -292,12 +294,23 @@ async function toggleBookmark(id) {
 const USER_KEY = "hackmatch-user";
 
 function loadUser() {
-  return JSON.parse(localStorage.getItem(USER_KEY));
+  try {
+    const storedUser = JSON.parse(localStorage.getItem(USER_KEY));
+    if (storedUser && storedUser.name === DEMO_ACCOUNT.name && storedUser.email === DEMO_ACCOUNT.email) {
+      const session = { name: DEMO_ACCOUNT.name, email: DEMO_ACCOUNT.email };
+      localStorage.setItem(USER_KEY, JSON.stringify(session));
+      return session;
+    }
+  } catch (error) {
+    // An invalid stored value is treated as no demo session.
+  }
+  localStorage.removeItem(USER_KEY);
+  return null;
 }
 
 function setUser(user) {
-  currentUser = user;
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+  currentUser = user ? { name: DEMO_ACCOUNT.name, email: DEMO_ACCOUNT.email } : null;
+  if (currentUser) localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
   else localStorage.removeItem(USER_KEY);
   renderUserArea();
 }
@@ -360,8 +373,8 @@ function renderUserArea() {
     document.getElementById("rec-name").textContent = currentUser.name.split(" ")[0];
   } else {
     area.innerHTML = `
-      <a href="#login" class="btn btn-sm btn-ghost" data-tab="signin">Sign in</a>
-      <a href="#login" class="btn btn-sm btn-primary" data-tab="signup">Get started</a>`;
+      <a href="#login" class="btn btn-sm btn-ghost">Sign in</a>
+      <a href="#login" class="btn btn-sm btn-primary">Get started</a>`;
     document.getElementById("rec-name").textContent = "You";
   }
 }
@@ -590,41 +603,10 @@ async function handlePreferenceSubmit(event) {
   document.getElementById("recommendation-area").scrollIntoView({ behavior: "smooth" });
 }
 
-/* ----- Login and Create account ----- */
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function switchTab(tab) {
-  document.querySelectorAll(".tab").forEach(function (button) {
-    const active = button.dataset.tab === tab;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", active);
-  });
-  document.getElementById("signin-form").hidden = tab !== "signin";
-  document.getElementById("signup-form").hidden = tab !== "signup";
-}
+/* ----- Presentation Demo Login ----- */
 
 function value(id) {
   return document.getElementById(id).value.trim();
-}
-
-function passwordStrength(password) {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  return score; // 0 to 4
-}
-
-function updateStrength() {
-  const score = passwordStrength(document.getElementById("signup-password").value);
-  const labels = ["Too short", "Weak", "Fair", "Good", "Strong"];
-  const colors = ["#f87171", "#f87171", "#fbbf24", "#22d3ee", "#34d399"];
-  const bar = document.getElementById("strength-bar");
-  bar.style.width = (score / 4) * 100 + "%";
-  bar.style.background = colors[score];
-  document.getElementById("strength-text").textContent = "Strength: " + labels[score];
 }
 
 async function handleSignIn(event) {
@@ -633,66 +615,18 @@ async function handleSignIn(event) {
   const password = document.getElementById("signin-password").value;
   const errorBox = document.getElementById("signin-error");
 
-  let error = "";
-  if (!EMAIL_PATTERN.test(email)) error = "Please enter a valid email address.";
-  else if (password.length < 8) error = "Password must be at least 8 characters.";
-  errorBox.textContent = error;
-  if (error) return;
-
   try {
     setUser(await loginUser({ email: email, password: password }));
     event.target.reset();
-    showToast("Welcome back, " + currentUser.name + "!");
-    location.hash = "#recommended";
-  } catch (err) {
-    errorBox.textContent = err.message;
-  }
-}
-
-async function handleSignUp(event) {
-  event.preventDefault();
-  const details = {
-    name: value("signup-name"),
-    email: value("signup-email"),
-    college: value("signup-college"),
-    phone: value("signup-phone"),
-    branch: value("signup-branch"),
-    year: value("signup-year"),
-    password: document.getElementById("signup-password").value
-  };
-  const confirm = document.getElementById("signup-confirm").value;
-  const errorBox = document.getElementById("signup-error");
-
-  let error = "";
-  if (details.name.length < 2) error = "Please enter your full name.";
-  else if (!EMAIL_PATTERN.test(details.email)) error = "Please enter a valid email address.";
-  else if (!details.college) error = "Please enter your college or university.";
-  else if (details.phone && !/^\d{10}$/.test(details.phone)) error = "Phone number must have 10 digits.";
-  else if (!details.branch) error = "Please select your branch.";
-  else if (!details.year) error = "Please select your year of study.";
-  else if (passwordStrength(details.password) < 2 || details.password.length < 8) error = "Choose a stronger password (8+ characters with a number).";
-  else if (details.password !== confirm) error = "Passwords do not match.";
-  else if (!document.getElementById("signup-terms").checked) error = "Please accept the terms to continue.";
-  errorBox.textContent = error;
-  if (error) return;
-
-  try {
-    setUser(await registerUser(details));
-    event.target.reset();
-    updateStrength();
-    showToast("Account created. Welcome, " + currentUser.name + "!");
-    location.hash = "#recommended";
+    errorBox.textContent = "";
+    showToast("Welcome, Prithvi!");
+    location.hash = "#explore";
   } catch (err) {
     errorBox.textContent = err.message;
   }
 }
 
 document.getElementById("signin-form").addEventListener("submit", handleSignIn);
-document.getElementById("signup-form").addEventListener("submit", handleSignUp);
-document.getElementById("signup-password").addEventListener("input", updateStrength);
-document.getElementById("forgot-btn").addEventListener("click", function () {
-  showToast("Password reset will be available with the Java backend.");
-});
 
 // Show / hide password buttons
 document.querySelectorAll(".toggle-pass").forEach(function (button) {
@@ -703,12 +637,6 @@ document.querySelectorAll(".toggle-pass").forEach(function (button) {
     button.textContent = show ? "Hide" : "Show";
     button.setAttribute("aria-label", show ? "Hide password" : "Show password");
   });
-});
-
-// Any element with data-tab (tabs, "Create an account" links, "Get started") switches the form
-document.addEventListener("click", function (event) {
-  const tabButton = event.target.closest("[data-tab]");
-  if (tabButton) switchTab(tabButton.dataset.tab);
 });
 
 // One click handler for all "View Details", "Bookmark", "Close" and "Log out" buttons
