@@ -44,7 +44,7 @@
         </div>
       </div>
 
-      <div class="notice"><span class="dot" aria-hidden="true"></span> Sample data for the prototype. These are fictional hackathons, not verified real events.</div>
+      <div class="notice"><span class="dot" aria-hidden="true"></span><span id="data-source-message">Loading local demo data. These hackathons are fictional and not verified real events.</span></div>
 
       <div class="filters">
         <div class="field field-search">
@@ -141,8 +141,8 @@
 
       <div id="recommendation-area" hidden>
         <div class="notice notice-warn">
-          <strong>Sample recommendations.</strong> These scores are placeholder values for the prototype.
-          Real match scores will be calculated by the Core Java backend.
+          <strong id="recommendation-notice-title">Loading recommendations.</strong>
+          <span id="recommendation-notice-message">Match scores and reasons will be provided by the local Java backend when available.</span>
         </div>
         <details class="payload">
           <summary>Preferences that will be sent to the Java backend</summary>
@@ -157,7 +157,7 @@
       <div class="section-head">
         <p class="eyebrow mono">// bookmarks</p>
         <h1>Saved Hackathons</h1>
-        <p class="muted">Hackathons you have bookmarked. Saved in this browser.</p>
+        <p id="saved-description" class="muted">Loading saved hackathons...</p>
       </div>
       <div id="saved-list" class="grid"></div>
       <div id="saved-empty" class="empty" hidden>
@@ -176,10 +176,10 @@
           <p class="muted">Your personal launchpad for hackathons across India.</p>
           <ul class="feature-list">
             <li><span class="check" aria-hidden="true"></span> Personalized match scores</li>
-            <li><span class="check" aria-hidden="true"></span> Bookmarks synced to your account</li>
+            <li><span class="check" aria-hidden="true"></span> Bookmarks synced to the demo profile</li>
             <li><span class="check" aria-hidden="true"></span> Clear reasons for every recommendation</li>
           </ul>
-          <p class="small muted mono">Accounts will be stored by the Core Java + MySQL backend.</p>
+          <p class="small muted mono">Accounts remain a frontend-only demo.</p>
         </aside>
 
         <div class="auth-main card">
@@ -277,7 +277,7 @@
             <p class="small muted center">Already have an account? <button type="button" class="link-btn" data-tab="signin">Sign in</button></p>
           </form>
 
-          <p class="notice notice-warn small auth-note"><strong>Demo mode:</strong> no real authentication yet. Login will be handled by the Core Java backend.</p>
+          <p class="notice notice-warn small auth-note"><strong>Demo mode:</strong> no real authentication yet. This form stays frontend-only.</p>
         </div>
       </div>
     </section>
@@ -293,7 +293,7 @@
   <footer class="footer">
     <div class="container footer-inner small muted">
       <span><strong class="logo-small">Hack<span class="logo-accent">Match</span></strong> &middot; Java OOP Mini-Project</span>
-      <span class="mono">frontend prototype &middot; sample data</span>
+      <span id="footer-data-source" class="mono">frontend prototype &middot; loading local demo data</span>
     </div>
   </footer>
 

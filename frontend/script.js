@@ -136,83 +136,94 @@ const DOMAIN_OPTIONS = ["AI/ML", "Web Development", "FinTech", "Healthcare", "Op
 
 /* =====================================================================
    2. API LAYER
-   Proposed endpoints for the future Core Java (JDBC + MySQL) backend.
-   These endpoints DO NOT exist yet. Until they do, these functions
-   simply return the sample data above.
+   Hackathon listings, recommendations, and bookmarks use the Core Java
+   (JDBC + MariaDB) backend when it is available.
    ===================================================================== */
 
-const API_BASE_URL = "http://localhost:8080/api"; // TODO: set to the Java server URL
-const USE_BACKEND = false;                        // TODO: set to true when the backend is ready
+const API_BASE_URL = "http://localhost:8080/api";
+const DEMO_STUDENT_ID = 1; // Seeded by database/schema.sql for bookmark demonstrations.
+let usingBackendHackathons = false;
+let usingBackendBookmarks = false;
+let recommendationSource = "none";
 
 async function getHackathons() {
-  if (USE_BACKEND) {
-    // TODO: GET /api/hackathons
+  try {
     const response = await fetch(API_BASE_URL + "/hackathons");
-    return response.json();
+    if (!response.ok) throw new Error("Hackathon API returned " + response.status + ".");
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error("Hackathon API returned an invalid response.");
+    usingBackendHackathons = true;
+    return data;
+  } catch (error) {
+    console.warn("Hackathon API is unavailable; using sample data.", error);
+    usingBackendHackathons = false;
+    return SAMPLE_HACKATHONS;
   }
-  return SAMPLE_HACKATHONS;
 }
 
 async function getRecommendations(preferences) {
-  if (USE_BACKEND) {
-    // TODO: POST /api/recommendations  (Java backend runs the matching algorithm)
+  try {
     const response = await fetch(API_BASE_URL + "/recommendations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(preferences)
     });
-    return response.json();
+    if (!response.ok) throw new Error("Recommendations API returned " + response.status + ".");
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error("Recommendations API returned an invalid response.");
+    recommendationSource = "backend";
+    return data;
+  } catch (error) {
+    console.warn("Recommendations API is unavailable; using sample recommendations.", error);
+    recommendationSource = "fallback";
+    return SAMPLE_RECOMMENDATIONS;
   }
-  return SAMPLE_RECOMMENDATIONS;
 }
 
-// TODO: GET /api/bookmarks and POST /api/bookmarks
-// When the backend is ready, call these from loadBookmarks() and saveBookmarks().
-
-// Proposed auth endpoints. The Java backend must hash passwords (e.g. BCrypt)
-// and store users in MySQL. The frontend never stores passwords.
-async function loginUser(credentials) {
-  if (USE_BACKEND) {
-    // TODO: POST /api/auth/login  -> returns { name, email, ... }
-    const response = await fetch(API_BASE_URL + "/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials)
-    });
-    if (!response.ok) throw new Error("Invalid email or password.");
-    return response.json();
+async function loadBackendBookmarks() {
+  try {
+    const response = await fetch(API_BASE_URL + "/bookmarks?studentId=" + DEMO_STUDENT_ID);
+    if (!response.ok) throw new Error("Bookmarks API returned " + response.status + ".");
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error("Bookmarks API returned an invalid response.");
+    bookmarkRecords = data;
+    bookmarks = data.map(function (bookmark) { return bookmark.hackathon.id; });
+    usingBackendBookmarks = true;
+  } catch (error) {
+    console.warn("Bookmarks API or Demo Student profile is unavailable; using browser bookmarks.", error);
+    bookmarkRecords = [];
+    usingBackendBookmarks = false;
   }
+}
+
+// Demo authentication intentionally remains frontend-only. The Java API has no auth endpoints.
+async function loginUser(credentials) {
   // DEMO MODE: no real check. Uses the part before "@" as the display name.
   return { name: credentials.email.split("@")[0], email: credentials.email };
 }
 
 async function registerUser(details) {
-  if (USE_BACKEND) {
-    // TODO: POST /api/auth/register
-    const response = await fetch(API_BASE_URL + "/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(details)
-    });
-    if (!response.ok) throw new Error("Could not create account.");
-    return response.json();
-  }
   // DEMO MODE: returns the profile without the password.
   return { name: details.name, email: details.email, college: details.college, branch: details.branch, year: details.year };
 }
 
 
 /* =====================================================================
-   3. BOOKMARK STORAGE (prototype uses browser localStorage)
+   3. BOOKMARK STORAGE (MariaDB-backed with browser fallback)
    ===================================================================== */
 
 const STORAGE_KEY = "hackmatch-bookmarks";
 
-function loadBookmarks() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+function loadStoredBookmarks() {
+  try {
+    const storedBookmarks = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return Array.isArray(storedBookmarks) ? storedBookmarks : [];
+  } catch (error) {
+    return [];
+  }
 }
 
-function saveBookmarks(ids) {
+function saveStoredBookmarks(ids) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
 }
 
@@ -220,15 +231,61 @@ function isBookmarked(id) {
   return bookmarks.includes(id);
 }
 
-function toggleBookmark(id) {
+function switchToBrowserBookmarks() {
+  bookmarks = Array.from(new Set(bookmarks.concat(loadStoredBookmarks())));
+  bookmarkRecords = [];
+  usingBackendBookmarks = false;
+  saveStoredBookmarks(bookmarks);
+  updateSavedDescription();
+}
+
+function toggleBrowserBookmark(id, fallbackNotice) {
   if (isBookmarked(id)) {
     bookmarks = bookmarks.filter(function (savedId) { return savedId !== id; });
   } else {
     bookmarks.push(id);
   }
-  saveBookmarks(bookmarks);
-  showToast(isBookmarked(id) ? "Saved to your bookmarks" : "Removed from bookmarks");
+  saveStoredBookmarks(bookmarks);
+  showToast((isBookmarked(id) ? "Saved to your bookmarks" : "Removed from bookmarks") + fallbackNotice);
   renderAll();
+}
+
+async function toggleBookmark(id) {
+  if (!usingBackendBookmarks) {
+    toggleBrowserBookmark(id, "");
+    return;
+  }
+
+  try {
+    const existingBookmark = bookmarkRecords.find(function (bookmark) {
+      return bookmark.hackathon.id === id;
+    });
+
+    if (existingBookmark) {
+      const response = await fetch(API_BASE_URL + "/bookmarks/" + existingBookmark.id, { method: "DELETE" });
+      if (!response.ok) throw new Error("Bookmarks API returned " + response.status + ".");
+      bookmarkRecords = bookmarkRecords.filter(function (bookmark) { return bookmark.id !== existingBookmark.id; });
+      bookmarks = bookmarks.filter(function (savedId) { return savedId !== id; });
+      showToast("Removed from your bookmarks");
+    } else {
+      const response = await fetch(API_BASE_URL + "/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: DEMO_STUDENT_ID, hackathonId: id })
+      });
+      if (!response.ok) throw new Error("Bookmarks API returned " + response.status + ".");
+      const bookmark = await response.json();
+      if (!bookmark || !bookmark.hackathon) throw new Error("Bookmarks API returned an invalid response.");
+      bookmarkRecords.push(bookmark);
+      bookmarks.push(id);
+      showToast("Saved to your bookmarks");
+    }
+    renderAll();
+  } catch (error) {
+    console.warn("Bookmarks API is unavailable; switching to browser bookmarks.", error);
+    switchToBrowserBookmarks();
+    toggleBrowserBookmark(id, " (saved in this browser)");
+  }
 }
 
 // Demo session (only the public profile, never the password)
@@ -251,7 +308,8 @@ function setUser(user) {
    ===================================================================== */
 
 let hackathons = [];
-let bookmarks = loadBookmarks();
+let bookmarks = loadStoredBookmarks();
+let bookmarkRecords = [];
 let recommendations = [];
 let currentUser = loadUser();
 
@@ -261,6 +319,34 @@ function showToast(message) {
   toast.classList.add("show");
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(function () { toast.classList.remove("show"); }, 2200);
+}
+
+function updateDataSourceMessage() {
+  const message = usingBackendHackathons
+    ? "Local MariaDB demo data is in use. These hackathons are fictional and not verified real events."
+    : "Sample fallback data is in use because the local backend is unavailable. These hackathons are fictional and not verified real events.";
+  document.getElementById("data-source-message").textContent = message;
+  document.getElementById("footer-data-source").textContent = usingBackendHackathons
+    ? "frontend prototype · local MariaDB demo data"
+    : "frontend prototype · fallback sample data";
+}
+
+function updateRecommendationNotice() {
+  const title = document.getElementById("recommendation-notice-title");
+  const message = document.getElementById("recommendation-notice-message");
+  if (recommendationSource === "backend") {
+    title.textContent = "Java MatchingService results.";
+    message.textContent = "Scores and reasons were calculated from the local MariaDB demo data.";
+  } else {
+    title.textContent = "Sample fallback recommendations.";
+    message.textContent = "The recommendations backend is unavailable, so these scores and reasons were not calculated by Java.";
+  }
+}
+
+function updateSavedDescription() {
+  document.getElementById("saved-description").textContent = usingBackendBookmarks
+    ? "Hackathons saved for the local Demo Student profile."
+    : "Hackathons saved in this browser because the bookmark service or Demo Student profile is unavailable.";
 }
 
 function renderUserArea() {
@@ -436,7 +522,7 @@ function openDetails(id) {
     </dl>
 
     <div class="modal-actions">
-      <a class="btn btn-primary" href="${h.registrationLink}" target="_blank" rel="noopener noreferrer">Register (sample link)</a>
+      <a class="btn btn-primary" href="${h.registrationLink}" data-action="register" target="_blank" rel="noopener noreferrer">Register (sample link)</a>
       <button class="btn ${saved ? "btn-saved" : ""}" data-action="bookmark" data-id="${h.id}">${saved ? "Saved" : "Bookmark"}</button>
       <button class="btn btn-ghost" data-action="close">Close</button>
     </div>`;
@@ -497,6 +583,7 @@ async function handlePreferenceSubmit(event) {
   if (error) return;
 
   recommendations = await getRecommendations(preferences);
+  updateRecommendationNotice();
   document.getElementById("payload-preview").textContent = JSON.stringify(preferences, null, 2);
   document.getElementById("recommendation-area").hidden = false;
   renderRecommendations();
@@ -625,9 +712,15 @@ document.addEventListener("click", function (event) {
 });
 
 // One click handler for all "View Details", "Bookmark", "Close" and "Log out" buttons
-document.addEventListener("click", function (event) {
+document.addEventListener("click", async function (event) {
   const button = event.target.closest("[data-action]");
   if (!button) return;
+
+  if (button.dataset.action === "register" && new URL(button.href).hostname === "example.com") {
+    event.preventDefault();
+    showToast("This is a demo hackathon. Its registration link is a placeholder and registration is not available.");
+    return;
+  }
 
   if (button.dataset.action === "logout") {
     setUser(null);
@@ -643,7 +736,7 @@ document.addEventListener("click", function (event) {
   if (action === "details") openDetails(id);
   if (action === "close") modal.close();
   if (action === "bookmark") {
-    toggleBookmark(id);
+    await toggleBookmark(id);
     if (modal.open) openDetails(id); // refresh the modal's button text
   }
 });
@@ -670,9 +763,12 @@ window.addEventListener("hashchange", showSection);
 
 async function init() {
   hackathons = await getHackathons();
+  if (usingBackendHackathons) await loadBackendBookmarks();
   renderCheckboxes("skill-options", "skill", SKILL_OPTIONS);
   renderCheckboxes("interest-options", "interest", DOMAIN_OPTIONS);
   renderUserArea();
+  updateDataSourceMessage();
+  updateSavedDescription();
   renderStats();
   showSection();
   renderAll();
