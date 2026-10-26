@@ -326,12 +326,16 @@ let bookmarkRecords = [];
 let recommendations = [];
 let currentUser = loadUser();
 
-function showToast(message) {
+function showToast(message, duration, aboveModal) {
   const toast = document.getElementById("toast");
+  const modal = document.getElementById("details-modal");
+  const showAboveModal = aboveModal && modal.open;
+  (showAboveModal ? modal : document.body).append(toast);
+  toast.classList.toggle("toast-over-modal", showAboveModal);
   toast.textContent = message;
   toast.classList.add("show");
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(function () { toast.classList.remove("show"); }, 2200);
+  showToast.timer = setTimeout(function () { toast.classList.remove("show"); }, duration || 2200);
 }
 
 function updateDataSourceMessage() {
@@ -646,7 +650,7 @@ document.addEventListener("click", async function (event) {
 
   if (button.dataset.action === "register" && new URL(button.href).hostname === "example.com") {
     event.preventDefault();
-    showToast("This is a demo hackathon. Its registration link is a placeholder and registration is not available.");
+    showToast("This is a demo hackathon. Its registration link is a placeholder and registration is not available.", 4500, true);
     return;
   }
 

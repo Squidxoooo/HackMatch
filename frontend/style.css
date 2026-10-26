@@ -481,6 +481,7 @@ legend { margin-bottom: 10px; }
   transition: opacity 0.2s, transform 0.2s;
   z-index: 50;
 }
+.toast.toast-over-modal { z-index: 1000; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* ===== Footer ===== */
