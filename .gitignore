@@ -1,8 +1,11 @@
 *.class
 out/
 target/
+backend/target/
 node_modules/
 dist/
 .env
+backend/.env
+backend/config.properties
 .idea/
 .DS_Store
