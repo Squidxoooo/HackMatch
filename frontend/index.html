@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#070b14">
+  <title>HackMatch - Find hackathons that match your skills</title>
+  <meta name="description" content="HackMatch helps students discover hackathons and get personalized recommendations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== Header and Navigation ===== -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="#explore" class="logo" aria-label="HackMatch home">
+        <span class="logo-mark" aria-hidden="true">&lt;/&gt;</span>
+        Hack<span class="logo-accent">Match</span>
+      </a>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="#explore" class="nav-link" data-section="explore">Explore</a>
+        <a href="#recommended" class="nav-link" data-section="recommended">Recommended</a>
+        <a href="#saved" class="nav-link" data-section="saved">Saved <span id="saved-count" class="count">0</span></a>
+      </nav>
+      <div id="user-area" class="user-area"></div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ===== A. Explore Hackathons ===== -->
+    <section id="explore" class="section">
+      <div class="hero">
+        <p class="eyebrow mono">// discover &middot; match &middot; build</p>
+        <h1>Find hackathons that <span class="gradient-text">match your skills</span> and interests.</h1>
+        <p class="muted hero-sub">Browse curated opportunities, filter by what matters, and get personalized match scores.</p>
+        <div class="stats">
+          <div class="stat"><strong id="stat-count">0</strong><span>Hackathons</span></div>
+          <div class="stat"><strong id="stat-prize">₹0</strong><span>Total prize pool</span></div>
+          <div class="stat"><strong>5</strong><span>Domains</span></div>
+        </div>
+      </div>
+
+      <div class="notice"><span class="dot" aria-hidden="true"></span> Sample data for the prototype. These are fictional hackathons, not verified real events.</div>
+
+      <div class="filters">
+        <div class="field field-search">
+          <label for="search">Search</label>
+          <input type="search" id="search" placeholder="Search by name, organizer or skill">
+        </div>
+        <div class="field">
+          <label for="filter-domain">Domain</label>
+          <select id="filter-domain">
+            <option value="">All domains</option>
+            <option>AI/ML</option>
+            <option>Web Development</option>
+            <option>FinTech</option>
+            <option>Healthcare</option>
+            <option>Open Innovation</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-mode">Mode</label>
+          <select id="filter-mode">
+            <option value="">Online or offline</option>
+            <option>Online</option>
+            <option>Offline</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-prize">Min. prize (INR)</label>
+          <input type="number" id="filter-prize" min="0" step="10000" placeholder="e.g. 50000">
+        </div>
+        <div class="field">
+          <label for="filter-status">Status</label>
+          <select id="filter-status">
+            <option value="">All</option>
+            <option>Active</option>
+            <option>Upcoming</option>
+          </select>
+        </div>
+        <button type="button" id="reset-filters" class="btn btn-ghost">Reset</button>
+      </div>
+
+      <p id="result-count" class="muted small mono"></p>
+      <div id="hackathon-list" class="grid"></div>
+    </section>
+
+    <!-- ===== C + D. Preferences and Recommendations ===== -->
+    <section id="recommended" class="section" hidden>
+      <div class="section-head">
+        <p class="eyebrow mono">// personalized</p>
+        <h1>Recommended for <span id="rec-name" class="gradient-text">You</span></h1>
+        <p class="muted">Tell us about yourself and we will suggest hackathons that fit you.</p>
+      </div>
+
+      <form id="preference-form" class="card form" novalidate>
+        <fieldset>
+          <legend>Skills <span class="req">*</span></legend>
+          <div class="checks" id="skill-options"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Interests <span class="req">*</span></legend>
+          <div class="checks" id="interest-options"></div>
+        </fieldset>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="experience">Experience level <span class="req">*</span></label>
+            <select id="experience">
+              <option value="">Select level</option>
+              <option>Beginner</option>
+              <option>Intermediate</option>
+              <option>Advanced</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="pref-prize">Preferred minimum prize (INR)</label>
+            <input type="number" id="pref-prize" min="0" step="10000" placeholder="e.g. 25000">
+          </div>
+          <div class="field">
+            <label for="team-size">Team size <span class="req">*</span></label>
+            <select id="team-size">
+              <option value="">Select size</option>
+              <option value="1">1 (Solo)</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+        </div>
+
+        <p id="form-error" class="error" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-lg">Find My Matches &rarr;</button>
+      </form>
+
+      <div id="recommendation-area" hidden>
+        <div class="notice notice-warn">
+          <strong>Sample recommendations.</strong> These scores are placeholder values for the prototype.
+          Real match scores will be calculated by the Core Java backend.
+        </div>
+        <details class="payload">
+          <summary>Preferences that will be sent to the Java backend</summary>
+          <pre id="payload-preview"></pre>
+        </details>
+        <div id="recommendation-list" class="list"></div>
+      </div>
+    </section>
+
+    <!-- ===== E. Saved Hackathons ===== -->
+    <section id="saved" class="section" hidden>
+      <div class="section-head">
+        <p class="eyebrow mono">// bookmarks</p>
+        <h1>Saved Hackathons</h1>
+        <p class="muted">Hackathons you have bookmarked. Saved in this browser.</p>
+      </div>
+      <div id="saved-list" class="grid"></div>
+      <div id="saved-empty" class="empty" hidden>
+        <p><strong>No saved hackathons yet.</strong></p>
+        <p class="muted">Use the Bookmark button on any hackathon to save it here.</p>
+        <a href="#explore" class="btn btn-primary">Explore Hackathons</a>
+      </div>
+    </section>
+
+    <!-- ===== G. Login / Create account ===== -->
+    <section id="login" class="section" hidden>
+      <div class="auth">
+        <aside class="auth-side">
+          <p class="eyebrow mono">// welcome to</p>
+          <h2 class="auth-brand">Hack<span class="gradient-text">Match</span></h2>
+          <p class="muted">Your personal launchpad for hackathons across India.</p>
+          <ul class="feature-list">
+            <li><span class="check" aria-hidden="true"></span> Personalized match scores</li>
+            <li><span class="check" aria-hidden="true"></span> Bookmarks synced to your account</li>
+            <li><span class="check" aria-hidden="true"></span> Clear reasons for every recommendation</li>
+          </ul>
+          <p class="small muted mono">Accounts will be stored by the Core Java + MySQL backend.</p>
+        </aside>
+
+        <div class="auth-main card">
+          <div class="tabs" role="tablist" aria-label="Account">
+            <button type="button" class="tab active" role="tab" id="tab-signin" aria-selected="true" aria-controls="signin-form" data-tab="signin">Sign in</button>
+            <button type="button" class="tab" role="tab" id="tab-signup" aria-selected="false" aria-controls="signup-form" data-tab="signup">Create account</button>
+          </div>
+
+          <!-- Sign in -->
+          <form id="signin-form" class="auth-form" role="tabpanel" aria-labelledby="tab-signin" novalidate>
+            <div class="field">
+              <label for="signin-email">College email</label>
+              <input type="email" id="signin-email" autocomplete="email" placeholder="you@college.edu.in" required>
+            </div>
+            <div class="field">
+              <label for="signin-password">Password</label>
+              <div class="password-wrap">
+                <input type="password" id="signin-password" autocomplete="current-password" placeholder="Enter your password" required>
+                <button type="button" class="toggle-pass" data-target="signin-password" aria-label="Show password">Show</button>
+              </div>
+            </div>
+            <div class="auth-row">
+              <label class="inline-check"><input type="checkbox" id="remember-me"> Remember me</label>
+              <button type="button" class="link-btn" id="forgot-btn">Forgot password?</button>
+            </div>
+            <p id="signin-error" class="error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
+            <p class="small muted center">New here? <button type="button" class="link-btn" data-tab="signup">Create an account</button></p>
+          </form>
+
+          <!-- Create account -->
+          <form id="signup-form" class="auth-form" role="tabpanel" aria-labelledby="tab-signup" novalidate hidden>
+            <div class="form-row two">
+              <div class="field">
+                <label for="signup-name">Full name <span class="req">*</span></label>
+                <input type="text" id="signup-name" autocomplete="name" placeholder="Aarav Sharma">
+              </div>
+              <div class="field">
+                <label for="signup-email">College email <span class="req">*</span></label>
+                <input type="email" id="signup-email" autocomplete="email" placeholder="you@college.edu.in">
+              </div>
+            </div>
+            <div class="form-row two">
+              <div class="field">
+                <label for="signup-college">College / University <span class="req">*</span></label>
+                <input type="text" id="signup-college" placeholder="e.g. ABC Institute of Technology">
+              </div>
+              <div class="field">
+                <label for="signup-phone">Phone number</label>
+                <input type="tel" id="signup-phone" autocomplete="tel" placeholder="10-digit mobile number">
+              </div>
+            </div>
+            <div class="form-row two">
+              <div class="field">
+                <label for="signup-branch">Branch <span class="req">*</span></label>
+                <select id="signup-branch">
+                  <option value="">Select branch</option>
+                  <option>Computer Engineering</option>
+                  <option>Information Technology</option>
+                  <option>Electronics</option>
+                  <option>AI &amp; Data Science</option>
+                  <option>Mechanical</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="signup-year">Year of study <span class="req">*</span></label>
+                <select id="signup-year">
+                  <option value="">Select year</option>
+                  <option>1st Year</option>
+                  <option>2nd Year</option>
+                  <option>3rd Year</option>
+                  <option>4th Year</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row two">
+              <div class="field">
+                <label for="signup-password">Password <span class="req">*</span></label>
+                <div class="password-wrap">
+                  <input type="password" id="signup-password" autocomplete="new-password" placeholder="Min. 8 characters">
+                  <button type="button" class="toggle-pass" data-target="signup-password" aria-label="Show password">Show</button>
+                </div>
+                <div class="strength" aria-hidden="true"><span id="strength-bar"></span></div>
+                <span id="strength-text" class="small muted">Use 8+ characters with a number and a symbol.</span>
+              </div>
+              <div class="field">
+                <label for="signup-confirm">Confirm password <span class="req">*</span></label>
+                <input type="password" id="signup-confirm" autocomplete="new-password" placeholder="Re-enter password">
+              </div>
+            </div>
+            <label class="inline-check"><input type="checkbox" id="signup-terms"> I agree to the terms and privacy policy.</label>
+            <p id="signup-error" class="error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Create account</button>
+            <p class="small muted center">Already have an account? <button type="button" class="link-btn" data-tab="signin">Sign in</button></p>
+          </form>
+
+          <p class="notice notice-warn small auth-note"><strong>Demo mode:</strong> no real authentication yet. Login will be handled by the Core Java backend.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== F. Hackathon Details (modal) ===== -->
+  <dialog id="details-modal" class="modal" aria-labelledby="modal-title">
+    <div id="modal-content"></div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="footer">
+    <div class="container footer-inner small muted">
+      <span><strong class="logo-small">Hack<span class="logo-accent">Match</span></strong> &middot; Java OOP Mini-Project</span>
+      <span class="mono">frontend prototype &middot; sample data</span>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
