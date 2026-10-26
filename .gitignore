@@ -1,0 +1,8 @@
+*.class
+out/
+target/
+node_modules/
+dist/
+.env
+.idea/
+.DS_Store
